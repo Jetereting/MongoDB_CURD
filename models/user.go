@@ -45,6 +45,7 @@ func cHandle(handle func(c *mgo.Collection)) {
 }
 
 func AddUser(name, password, age, phone string) (bool, string) {
+	info="添加成功"
 	cHandle(func(c *mgo.Collection) {
 		if c.Find(bson.M{"name": name}).One(&User{}) == nil {
 			result = false
