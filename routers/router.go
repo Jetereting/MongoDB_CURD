@@ -12,12 +12,12 @@ func init()  {
 
 	mux:=routes.New()
 	mux.Get("/",controlles.Index)
-	mux.Get("/user/findAllUserInfo",controlles.FindAllUserInfo)
+	mux.Get("/user/findAllUserInfo",controlles.FindAllUser)
 	mux.Get("/user/findUserByName",controlles.FindUserByName)
 	mux.Post("/user/updateUserPassword",controlles.UpdateUserPassword)
-	mux.Del("/user/deleteUserByName",controlles.DeleteUserByName)
+	mux.Del("/user/deleteUserByName",controlles.DeleteUser)
 	mux.Put("/user/addUser",controlles.AddUser)
-	mux.Get("/user/userLogin",controlles.UserLognin)
+	mux.Get("/user/userLogin",controlles.Login)
 	http.Handle("/",mux)
 
 	//http.HandleFunc("/", controlles.Index)

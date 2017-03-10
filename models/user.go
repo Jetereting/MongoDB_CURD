@@ -10,14 +10,11 @@ import (
 )
 
 var session *mgo.Session
-var err error
-var result = true
-var info = ""
-var user User
 
 type User struct {
-	Name     string `json:"name"`
-	Password string `json:"password"`
+	ID string `bson:"_id"`
+	Name     string `json:"name" bson:"name"`
+	Password string `json:"password" bson:"password"`
 	Age      string `json:"age"`
 	Phone    string `json:"phone"`
 }
@@ -25,7 +22,7 @@ type User struct {
 func init() {
 
 	fmt.Println("server start!!")
-
+	var err error
 	session, err = mgo.Dial(conf.DbUrl)
 	if err != nil {
 		fmt.Println("Dial fail!")
@@ -45,17 +42,34 @@ func cHandle(handle func(c *mgo.Collection)) {
 }
 
 func AddUser(name, password, age, phone string) (bool, string) {
-	info="添加成功"
+	result:=true
+	info:="插入成功"
 	cHandle(func(c *mgo.Collection) {
-		if c.Find(bson.M{"name": name}).One(&User{}) == nil {
+		n,err:= c.Find(bson.M{"name": name}).Count()
+		if err!=nil{
+			fmt.Println("model-AddUser ERROR:",err)
 			result = false
-			info = "该用户名已存在"
-		} else {
-			err := c.Insert(&User{name, utils.DoubleMd5(password), age, phone})
-			if err != nil {
-				result = false
-				info = "插入失败"
-			}
+			info = "插入错误请联系管理员"
+			return
+		}else if n>0{
+			result = false
+			info = "已存在该用户名"
+			return
+		}
+
+		user:=&User{
+			bson.NewObjectId().Hex(),
+			name,
+			utils.DoubleMd5(password),
+			age,
+			phone,
+		}
+
+		err = c.Insert(user)
+		if err != nil {
+			fmt.Println("model-AddUser ERROR:",err)
+			result = false
+			info = "插入失败"
 		}
 
 	})
@@ -63,18 +77,20 @@ func AddUser(name, password, age, phone string) (bool, string) {
 }
 
 func UserLogin(name, password string) (bool, string) {
-	info="登陆成功"
+	result:=true
+	info:="登陆成功"
 	cHandle(func(c *mgo.Collection) {
-		if c.Find(bson.M{"name": name}).One(&user)!= nil {
-			result = false
-			info = "没有该用户"
-		} else {
-			if strings.EqualFold(utils.DoubleMd5(password),user.Password){
-				result=true
-			}else {
-				result = false
-				info = "密码错误"
-			}
+		user:=User{}
+		err:=c.Find(bson.M{"name":name}).One(user)
+		if err!=nil{
+			fmt.Println("model-UserLogin ERROR:",err)
+			result=false
+			info="没有该用户"
+			return
+		}
+		if strings.Compare(utils.DoubleMd5(password),user.Password)!=0{
+			result=false
+			info="密码错误"
 		}
 
 	})
@@ -82,26 +98,30 @@ func UserLogin(name, password string) (bool, string) {
 }
 
 func DeleteUserByName(name string) (bool, string){
-	info="删除成功"
+	info:="删除成功"
 	result := true
 	cHandle(func(c *mgo.Collection) {
 		_, err := c.RemoveAll(bson.M{"name": name})
 		if err != nil {
+			fmt.Println("model-DeleteUserByName",err)
 			result = false
 			info="删除失败"
+			return
 		}
 	})
 	return result,info
 }
 
 func UpdateUserPassword(name, password string) (bool, string) {
-	info="更新成功"
+	info:="更新成功"
 	result := true
 	cHandle(func(c *mgo.Collection) {
 		err := c.Update(bson.M{"name": name}, bson.M{"$set": bson.M{"password": password}})
 		if err != nil {
+			fmt.Println("model-UpdateUserPassword",err)
 			result = false
 			info="更新失败"
+			return
 		}
 	})
 	return result,info
@@ -110,6 +130,10 @@ func UpdateUserPassword(name, password string) (bool, string) {
 func FindAllUserInfo() (users []User, err error) {
 	cHandle(func(c *mgo.Collection) {
 		err = c.Find(nil).All(&users)
+		if err!=nil{
+			fmt.Println("model-FindAllUserInfo",err)
+			return
+		}
 	})
 	return users, err
 }
@@ -117,6 +141,10 @@ func FindAllUserInfo() (users []User, err error) {
 func FindUserByName(name string) (users []User, err error) {
 	cHandle(func(c *mgo.Collection) {
 		err = c.Find(bson.M{"name": name}).All(&users)
+		if err!=nil{
+			fmt.Println("model-FindAllUserInfo",err)
+			return
+		}
 	})
 	return users, err
 }
